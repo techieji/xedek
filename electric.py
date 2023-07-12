@@ -24,16 +24,27 @@ class component:
         return f'{type(self).__name__}({" ".join(map(str, self.ps))} | {str(self.attrs)})'
     def get_connections(self):
         for p in self.ps:
-            yield from pcd[p]
+            yield from filter(lambda s: s is not self, pcd[p])
     @classmethod
     def get_component(klass, sid):
         return klass.register[sid]
+    @staticmethod
+    def get_terminal_voltage(node):
+        try:
+            return next(filter(lambda c: type(c) is terminal, pcd[node])).voltage
+        except StopIteration:
+            return None
+    def get_pin_voltages(self, *ps):
+        return NotImplemented
 
 class terminal(component):     # voltage
-    pass
+    def get_pin_voltages(self, v1):
+        return self.voltage
 
 class wire(component):
-    pass
+    def get_pin_voltages(self, v1, v2):    # TODO: use
+        v = max(v1, v2)
+        return (v, v)
 
 class resistor(wire):          # resistance
     pass
@@ -41,11 +52,12 @@ class resistor(wire):          # resistance
 class lamp(wire):
     pass
 
-def get_all_paths(component, history=[]):
-    new_history = history + [component]
-    if type(component) is terminal and component.voltage == 0:
+def get_all_paths(pin, history=[]):
+    new_history = history + [pin]
+    if component.get_terminal_voltage(pin) == 0:
         return [new_history]
-    return sum((get_all_paths(c, new_history) for c in component.get_connections() if c not in new_history), [])
+    return sum((get_all_paths(p, new_history) for p in sum((c.ps for c in pcd[pin]), ()) if p not in new_history), [])
+    #return sum((get_all_paths(c, new_history) for c in component.get_connections() if c not in new_history), [])
 
 from pprint import pprint
 
@@ -56,4 +68,7 @@ wire(1, 3)
 wire(2, 3)
 terminal(3, voltage=0)
 
-pprint(get_all_paths(component.get_component(1)))
+#print(component.get_terminal_voltage(3))
+#print(pcd)
+#print(list(component.get_component(4).get_connections()))
+pprint(get_all_paths(0))
