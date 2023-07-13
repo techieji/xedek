@@ -1,4 +1,6 @@
 from collections import defaultdict
+import itertools as it
+cfi = it.chain.from_iterable
 import time
 
 pcd = defaultdict(lambda: set())    # Pin component dictionary
@@ -25,26 +27,41 @@ class component:
     def get_connections(self):
         for p in self.ps:
             yield from filter(lambda s: s is not self, pcd[p])
+    def get_connected_pins(self, p) -> list:
+        return NotImplemented
     @classmethod
     def get_component(klass, sid):
         return klass.register[sid]
+    @classmethod
+    def get_sources(klass):
+        for v in klass.register.values():
+            if type(v) is terminal and v.voltage > 0:
+                yield v.p1
     @staticmethod
     def get_terminal_voltage(node):
         try:
             return next(filter(lambda c: type(c) is terminal, pcd[node])).voltage
         except StopIteration:
             return None
-    def get_pin_voltages(self, *ps):
-        return NotImplemented
 
 class terminal(component):     # voltage
-    def get_pin_voltages(self, v1):
-        return self.voltage
+    def get_connected_pins(self, p):
+        #if p == 'start':
+        return [self.p1]
+        #return []
 
 class wire(component):
-    def get_pin_voltages(self, v1, v2):    # TODO: use
-        v = max(v1, v2)
-        return (v, v)
+    def get_connected_pins(self, p):
+        if p == self.p1: return [self.p2]
+        else: return [self.p1]
+
+class transistor(component):
+    def get_connected_pins(self, p):
+        if p == self.p1 or p == self.p2: return [self.p3]
+        else: return []
+
+class button(wire):
+    pass
 
 class resistor(wire):          # resistance
     pass
@@ -56,19 +73,23 @@ def get_all_paths(pin, history=[]):
     new_history = history + [pin]
     if component.get_terminal_voltage(pin) == 0:
         return [new_history]
-    return sum((get_all_paths(p, new_history) for p in sum((c.ps for c in pcd[pin]), ()) if p not in new_history), [])
-    #return sum((get_all_paths(c, new_history) for c in component.get_connections() if c not in new_history), [])
+    return cfi(get_all_paths(p, new_history) for p in cfi(c.get_connected_pins(pin) for c in pcd[pin]) if p not in new_history)
 
 from pprint import pprint
 
-terminal(0, voltage=5)
-wire(0, 1)
-wire(0, 2)
-wire(1, 3)
-wire(2, 3)
-terminal(3, voltage=0)
+terminal(0, voltage=1)
+terminal(1, voltage=1)
+terminal(2, voltage=5)
+transistor(2, 0, 3)
+transistor(3, 1, 4)
+lamp(4, 5)
+resistor(5, 6)
+terminal(6, voltage=0)
 
+#print(list(component.get_sources()))
+#print(list(get_all_paths(0)))
 #print(component.get_terminal_voltage(3))
 #print(pcd)
 #print(list(component.get_component(4).get_connections()))
-pprint(get_all_paths(0))
+#pprint(list(get_all_paths(0)))
+print(list(cfi(map(get_all_paths, component.get_sources()))))
