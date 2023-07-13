@@ -128,6 +128,8 @@ class component:
 component.reset_class()
 
 class terminal(component):     # voltage
+    '''Class for both positive terminals and ground.'''
+        
     def get_connected_pins(self, p):
         #if p == 'start':
         return [self.p1]
@@ -137,6 +139,8 @@ class terminal(component):     # voltage
         return [1]
 
 class wire(component):
+    '''Class for wires, which allow current to flow from one point to another.'''
+
     def get_connected_pins(self, p):
         if p == self.p1: return [self.p2]
         else: return [self.p1]
@@ -146,6 +150,8 @@ class wire(component):
         else: return [i1, i1]
 
 class diode(wire):
+    '''Class for diodes, which act like one-directional wires.'''
+
     def get_connected_pins(self, p):
         if p == self.p1: return [self.p2]
         else: return []
@@ -154,6 +160,14 @@ class diode(wire):
         return [i1, i1]
 
 class transistor(component):
+    '''Class for transistors, which allow current to flow from the collector to the emitter 
+    and from the base to the emitter if the base is in contact with positive current.
+
+        >>> t = transistor(1, 2, 3)
+    
+    1 is the collector, 2 is the base, 3 is the emitter.
+    '''
+
     def get_connected_pins(self, p):
         if p == self.p1 or p == self.p2: return [self.p3]
         else: return []
@@ -163,12 +177,16 @@ class transistor(component):
             return [i1, i2, i1]
 
 class button(wire):      # TODO
+    '''Class for buttons, which behave like wires when pressed but do not let current flow through
+    otherwise.'''
     pass
 
 class resistor(wire):          # resistance
+    '''Class for resistors, which behave like wires but create a resistance to weaken the current.'''
     pass
 
 class lamp(wire):
+    '''Class for lamps, which behave like resistors but also emit light when current flows through.'''
     def propagate_current(self, i1, i2):
         r = super().propagate_current(i1, i2)
         if r[0]:
@@ -176,6 +194,8 @@ class lamp(wire):
         return r
 
 def get_all_paths(pin, history=[]):
+    '''Returns lists of all paths that positive current could travel through, going from a positive 
+    terminal to the ground. ADD EXAMPLE'''
     new_history = history + [pin]
     if component.get_terminal_voltage(pin) == 0 or component in history[:-1]:
         return [new_history]
