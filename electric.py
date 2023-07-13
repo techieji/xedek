@@ -62,6 +62,13 @@ class wire(component):
         if i1 == 0: return [i2, i2]
         else: return [i1, i1]
 
+class diode(wire):
+    def get_connected_pins(self, p):
+        if p == self.p1: return [self.p2]
+        else: return []
+    def propagate_current(self, i1, i2):
+        return [i1, i1]
+
 class transistor(component):
     def get_connected_pins(self, p):
         if p == self.p1 or p == self.p2: return [self.p3]
@@ -85,9 +92,9 @@ class lamp(wire):
 
 def get_all_paths(pin, history=[]):
     new_history = history + [pin]
-    if component.get_terminal_voltage(pin) == 0:
+    if component.get_terminal_voltage(pin) == 0 or component in history[:-1]:
         return [new_history]
-    return cfi(get_all_paths(p, new_history) for p in cfi(c.get_connected_pins(pin) for c in pcd[pin]) if p not in new_history)
+    return cfi(get_all_paths(p, new_history) for p in cfi(c.get_connected_pins(pin) for c in pcd[pin]) if p not in new_history[-2:])
 
 from pprint import pprint
 
