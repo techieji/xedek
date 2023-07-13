@@ -29,6 +29,8 @@ class component:
             yield from filter(lambda s: s is not self, pcd[p])
     def get_connected_pins(self, p) -> list:
         return NotImplemented
+    def propagate_current(self, *Is) -> list:
+        return NotImplemented
     @classmethod
     def get_component(klass, sid):
         return klass.register[sid]
@@ -49,25 +51,37 @@ class terminal(component):     # voltage
         #if p == 'start':
         return [self.p1]
         #return []
+    def propagate_current(self, i):
+        return [1]
 
 class wire(component):
     def get_connected_pins(self, p):
         if p == self.p1: return [self.p2]
         else: return [self.p1]
+    def propagate_current(self, i1, i2):
+        if i1 == 0: return [i2, i2]
+        else: return [i1, i1]
 
 class transistor(component):
     def get_connected_pins(self, p):
         if p == self.p1 or p == self.p2: return [self.p3]
         else: return []
+    def propagate_current(self, i1, i2, i3):
+        if i2 == 1:
+            return [i1, i2, i1]
 
-class button(wire):
+class button(wire):      # TODO
     pass
 
 class resistor(wire):          # resistance
     pass
 
 class lamp(wire):
-    pass
+    def propagate_current(self, i1, i2):
+        r = super().propagate_current(i1, i2)
+        if r[0]:
+            print('light on')
+        return r
 
 def get_all_paths(pin, history=[]):
     new_history = history + [pin]
