@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, deque
 import itertools as it
 cfi = it.chain.from_iterable
 import time
@@ -60,7 +60,7 @@ class component:
 
         Should be overridden in subclasses.
         '''
-        return NotImplemented
+        raise NotImplementedError
 
     def propagate_current(self, *Is) -> list:
         '''Determines which pins current will flow through given the current flowing into
@@ -74,7 +74,14 @@ class component:
 
         Should be overridden in subclasses.
         '''
-        return NotImplemented
+        raise NotImplementedError
+
+    def _propagate_current(self):
+        # Automatically called propagate_current using currents from pct
+        # Regular propagate current, but it also updates pct
+        cl = self.propagate_current(*map(component.pct.get, self.ps))
+        for p, c in zip(self.ps, cl):
+            component.pct[p] = c
 
     @classmethod
     def get_component(klass, sid):       # TODO: change classmethod to staticmethod
@@ -107,7 +114,7 @@ class component:
         klass.sid = 1
         klass.register = {}
         klass.pcd = defaultdict(lambda: set())    # Pin component dictionary
-        klass.pvt = defaultdict(lambda: 0)        # Pin voltage table
+        klass.pct = defaultdict(lambda: 0)        # Pin current table
     
     @staticmethod
     def get_terminal_voltage(node):
@@ -187,31 +194,61 @@ class resistor(wire):          # resistance
 
 class lamp(wire):
     '''Class for lamps, which behave like resistors but also emit light when current flows through.'''
+    def __init__(self, *ps, **kwargs):
+        super().__init__(*ps, **kwargs)
+        self.on = False
     def propagate_current(self, i1, i2):
         r = super().propagate_current(i1, i2)
-        if r[0]:
+        if r[0] and not self.on:
             print('light on')
+            self.on = True
+        elif not r[0] and self.on:
+            print('light off')
+            self.on = False
         return r
 
 def get_all_paths(pin, history=[]):
     '''Returns lists of all paths that positive current could travel through, going from a positive 
-    terminal to the ground. ADD EXAMPLE'''
+    terminal to the ground. Example:
+
+        >>> t1 = terminal(0, voltage=5)
+        >>> w = wire(0, 2)
+        >>> l = lamp(2, 3)
+        >>> t2 = terminal(3, voltage=5)
+        >>> get_all_paths(0)
+        [[0, 2, 3]]
+
+    '''
     new_history = history + [pin]
     if component.get_terminal_voltage(pin) == 0 or component in history[:-1]:
         return [new_history]
     return cfi(get_all_paths(p, new_history) for p in cfi(c.get_connected_pins(pin) for c in component.pcd[pin]) if p not in new_history[-2:])
 
+def propagate_current_at_pin(pin):
+    cl = component.pcd[pin]
+    for c in cl:
+        c._propagate_current()
+
+def propagate_current(paths: list[list]):
+    while True:
+        for path in paths:
+            for p in path:     # FIXME: use deque to syncronize
+                propagate_current_at_pin(p)
+
 def main():
     from pprint import pprint
-
     terminal(0, voltage=1)
-    terminal(1, voltage=1)
-    terminal(2, voltage=5)
-    transistor(2, 0, 3)
-    transistor(3, 1, 4)
-    lamp(4, 5)
-    resistor(5, 6)
-    terminal(6, voltage=0)
+    lamp(0, 1)
+    terminal(1, voltage=0)
+
+    #terminal(0, voltage=1)
+    #terminal(1, voltage=1)
+    #terminal(2, voltage=5)
+    #transistor(2, 0, 3)
+    #transistor(3, 1, 4)
+    #lamp(4, 5)
+    #resistor(5, 6)
+    #terminal(6, voltage=0)
 
     #print(list(component.get_sources()))
     #print(list(get_all_paths(0)))
@@ -219,7 +256,9 @@ def main():
     #print(component.pcd)
     #print(list(component.get_component(4).get_connections()))
     #pprint(list(get_all_paths(0)))
-    print(list(cfi(map(get_all_paths, component.get_sources()))))
+    l = list(cfi(map(get_all_paths, component.get_sources())))
+    print(l)
+    propagate_current(l)
 
 if __name__ == '__main__':
     main()
