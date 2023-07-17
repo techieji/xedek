@@ -7,16 +7,20 @@ class DirectedGraph:
         if cd is None:
             self.cd = defaultdict(set)      # Connections dictionary
         else:
-            self.cd = cd
+            self.cd = defaultdict(set, cd)
 
     def __str__(self):
-        return f'DirectedGraph({self.cd=})'
+        return f'DirectedGraph({dict(self.cd)})'
 
     def add_conn(self, a, b):
         self.cd[a].add(b)
 
     def get_conns(self, a):
         return self.cd[a]
+
+    def union(self, other):
+        keys = set(self.cd.keys()).union(set(other.cd.keys()))
+        return DirectedGraph({k: self.cd[k].union(other.cd[k]) for k in keys})
 
     @staticmethod
     def from_list_of_lists(ll):

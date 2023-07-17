@@ -2,6 +2,10 @@ from collections import defaultdict, deque
 import itertools as it
 cfi = it.chain.from_iterable
 import time
+from graph import DirectedGraph
+from functools import reduce
+
+RUNNING = False
 
 class component:
     '''Superclass of all electrical components.
@@ -26,6 +30,7 @@ class component:
         for _i, v in enumerate(ps):
             i = _i + 1
             setattr(self, f'p{i}', v)
+            setattr(self, f'v{i}', property(lambda self, name=f'p{i}': components.pct[getattr(self, name)]))
         self.on = False
         for k, v in attrs.items():
             setattr(self, k, v)
@@ -176,14 +181,23 @@ class transistor(component):
     '''
 
     def get_connected_pins(self, p):
+        if RUNNING:
+            match p:
+                case self.p1:
+                    return [self.p3] if self.v2 else []
+                case self.p2:
+                    return [self.p3]
+                case self.p3:
+                    return []
         if p == self.p1 or p == self.p2: return [self.p3]
         else: return []
     
     def propagate_current(self, i1, i2, i3):
         if i2 == 1:
             return [i1, i2, i1]
+        return [i1, i2, i3]
 
-class button(wire):      # TODO
+class button(wire):      # TODO TODO get_connected_pins conditional on button press
     '''Class for buttons, which behave like wires when pressed but do not let current flow through
     otherwise.'''
     pass
@@ -193,21 +207,24 @@ class resistor(wire):          # resistance
     pass
 
 class lamp(wire):
+    lamp_sid = 1
     '''Class for lamps, which behave like resistors but also emit light when current flows through.'''
     def __init__(self, *ps, **kwargs):
         super().__init__(*ps, **kwargs)
+        self.lamp_sid = lamp.lamp_sid
+        lamp.lamp_sid += 1
         self.on = False
     def propagate_current(self, i1, i2):
         r = super().propagate_current(i1, i2)
         if r[0] and not self.on:
-            print('light on')
+            print(f'light {self.lamp_sid} on')
             self.on = True
         elif not r[0] and self.on:
-            print('light off')
+            print(f'light {self.lamp_sid} off')
             self.on = False
         return r
 
-def get_all_paths(pin, history=[]):
+def _get_all_paths(pin, history=[]):
     '''Returns lists of all paths that positive current could travel through, going from a positive 
     terminal to the ground. Example:
 
@@ -222,33 +239,43 @@ def get_all_paths(pin, history=[]):
     new_history = history + [pin]
     if component.get_terminal_voltage(pin) == 0 or component in history[:-1]:
         return [new_history]
-    return cfi(get_all_paths(p, new_history) for p in cfi(c.get_connected_pins(pin) for c in component.pcd[pin]) if p not in new_history[-2:])
+    return cfi(_get_all_paths(p, new_history) for p in cfi(c.get_connected_pins(pin) for c in component.pcd[pin]) if p not in new_history[-2:])
 
-def propagate_current_at_pin(pin):
+def get_all_paths(pin):
+    return DirectedGraph.from_list_of_lists(_get_all_paths(pin))
+
+def get_all_paths_from_positive():
+    return reduce(DirectedGraph.union, map(get_all_paths, component.get_sources()))
+
+def propagate_current_at_pin(pin, paths):
     cl = component.pcd[pin]
     for c in cl:
-        c._propagate_current()
+        pl = c.get_connected_pins(pin)
+        # print(pin, pl, paths.get_conns(pin))
+        if set(pl).issubset(paths.get_conns(pin)) or type(c) is terminal:
+            c._propagate_current()
 
-def propagate_current(paths: list[list]):
+def propagate_current(paths: DirectedGraph):
     while True:
-        for path in paths:
-            for p in path:     # FIXME: use deque to syncronize
-                propagate_current_at_pin(p)
+        for p in component.pcd.keys():
+            propagate_current_at_pin(p, paths)
 
 def main():
+    global RUNNING
     from pprint import pprint
-    terminal(0, voltage=1)
-    lamp(0, 1)
-    terminal(1, voltage=0)
-
     #terminal(0, voltage=1)
-    #terminal(1, voltage=1)
-    #terminal(2, voltage=5)
-    #transistor(2, 0, 3)
-    #transistor(3, 1, 4)
-    #lamp(4, 5)
-    #resistor(5, 6)
-    #terminal(6, voltage=0)
+    #lamp(0, 1)
+    #lamp(0, 2)
+    #terminal(1, voltage=0)
+
+    terminal(0, voltage=0)
+    terminal(1, voltage=0)
+    terminal(2, voltage=5)
+    transistor(2, 0, 3)
+    transistor(3, 1, 4)
+    lamp(4, 5)
+    resistor(5, 6)
+    terminal(6, voltage=0)
 
     #print(list(component.get_sources()))
     #print(list(get_all_paths(0)))
@@ -256,9 +283,11 @@ def main():
     #print(component.pcd)
     #print(list(component.get_component(4).get_connections()))
     #pprint(list(get_all_paths(0)))
-    l = list(cfi(map(get_all_paths, component.get_sources())))
-    print(l)
-    propagate_current(l)
+    #l = list(cfi(map(get_all_paths, component.get_sources())))
+    p = get_all_paths_from_positive()
+    RUNNING = True
+    propagate_current(p)
+    #propagate_current(l)
 
 if __name__ == '__main__':
     main()
