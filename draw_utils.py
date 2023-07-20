@@ -15,33 +15,39 @@ def lerp_line(p1, p2, d):
 def add_delta(p1, d):
     return (p1[0] + d[0], p1[1] + d[1])
 
-def draw_wire(ip, ep, color='yellow'):
+def draw_wire(ip, ep, color='yellow', component=None):
     pygame.draw.line(screen, color, ip, ep)
 
-def draw_lamp(ip, ep, r=10):
+def draw_lamp(ip, ep, component, r=10):
+    if (component.bec is not None) and component.bec.on:
+        fore = 'black'
+        back = 'yellow'
+    else:
+        fore = 'yellow'
+        back = 'black'
     draw_wire(ip, ep)
     pos = midpoint(ip, ep)
-    pygame.draw.circle(screen, 'black', pos, r)
-    pygame.draw.circle(screen, 'yellow', pos, r, 1)
-    pygame.draw.line(screen, 'yellow',
+    pygame.draw.circle(screen, back, pos, r)
+    pygame.draw.circle(screen, fore, pos, r, 1)
+    pygame.draw.line(screen, fore,
              lerp_line(pos, add_delta(pos, (1, 1)), r),
              lerp_line(pos, add_delta(pos, (-1, -1)), r))
-    pygame.draw.line(screen, 'yellow',
+    pygame.draw.line(screen, fore,
             lerp_line(pos, add_delta(pos, (-1, 1)), r),
             lerp_line(pos, add_delta(pos, (1, -1)), r))
 
-def draw_positive(p):    # FIXME: Offset same amount as ground
+def draw_positive(p, component=None):    # FIXME: Offset same amount as ground
     pygame.draw.circle(screen, 'yellow', p, 10, 1)
     pygame.draw.line(screen, 'yellow', (p[0], p[1] - 5), (p[0], p[1] + 5))
     pygame.draw.line(screen, 'yellow', (p[0] - 5, p[1]), (p[0] + 5, p[1]))
 
-def draw_negative(p):
+def draw_negative(p, component=None):
     pygame.draw.line(screen, 'yellow', p, (p[0], p[1] + 4))
     pygame.draw.line(screen, 'yellow', (p[0] - 9, p[1] + 4), (p[0] + 9, p[1] + 4))
     pygame.draw.line(screen, 'yellow', (p[0] - 5, p[1] + 8), (p[0] + 4, p[1] + 8))
     pygame.draw.line(screen, 'yellow', (p[0] - 1, p[1] + 12), (p[0] + 1, p[1] + 12))
 
-def draw_button(ip, ep):
+def draw_button(ip, ep, component=None):
     draw_wire(ip, ep)
     pos = midpoint(ip, ep)
     # s1 = 

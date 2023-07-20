@@ -21,9 +21,10 @@ class component:
     '''
     # Class attrs are set in component.reset_class
     def __init__(self, *ps, **attrs):
-        self.sid = component.sid
+        self.sid = component.sid      # TODO investigate whether the sid is going up after resets
         self.ps = ps
         self.attrs = attrs
+        self.fec = None
         component.sid += 1
         component.register[self.sid] = self
         for p in ps: component.pcd[p].add(self)
@@ -120,6 +121,7 @@ class component:
         klass.register = {}
         klass.pcd = defaultdict(lambda: set())    # Pin component dictionary
         klass.pct = defaultdict(lambda: 0)        # Pin current table
+        lamp.lamp_sid = 1
     
     @staticmethod
     def get_terminal_voltage(node):
@@ -136,8 +138,6 @@ class component:
             return next(filter(lambda c: type(c) is terminal, component.pcd[node])).voltage
         except StopIteration:
             return None
-
-component.reset_class()
 
 class terminal(component):     # voltage
     '''Class for both positive terminals and ground.'''
@@ -206,7 +206,7 @@ class resistor(wire):          # resistance
     '''Class for resistors, which behave like wires but create a resistance to weaken the current.'''
     pass
 
-class lamp(wire):
+class lamp(wire):      # FIXME: source and dest are same pin? Fix issue.
     lamp_sid = 1
     '''Class for lamps, which behave like resistors but also emit light when current flows through.'''
     def __init__(self, *ps, **kwargs):
@@ -223,6 +223,8 @@ class lamp(wire):
             print(f'light {self.lamp_sid} off')
             self.on = False
         return r
+
+component.reset_class()
 
 def _get_all_paths(pin, history=[]):
     '''Returns lists of all paths that positive current could travel through, going from a positive 
@@ -255,10 +257,13 @@ def propagate_current_at_pin(pin, paths):
         if set(pl).issubset(paths.get_conns(pin)) or type(c) is terminal:
             c._propagate_current()
 
+def propagate_current_step(paths: DirectedGraph):
+    for p in component.pcd.keys():
+        propagate_current_at_pin(p, paths)
+
 def propagate_current(paths: DirectedGraph):
     while True:
-        for p in component.pcd.keys():
-            propagate_current_at_pin(p, paths)
+        propagate_current_step(paths)
 
 def main():
     global RUNNING
