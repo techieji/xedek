@@ -249,6 +249,9 @@ def get_all_paths(pin):
 def get_all_paths_from_positive():
     return reduce(DirectedGraph.union, map(get_all_paths, component.get_sources()))
 
+def detect_shorts(dg):     # TODO: finish
+    pass
+
 def propagate_current_at_pin(pin, paths):
     cl = component.pcd[pin]
     for c in cl:

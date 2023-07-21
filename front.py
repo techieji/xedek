@@ -1,4 +1,4 @@
-import pygame # TODO: add icon & escape button
+import pygame # TODO: add icon
 import math
 import itertools as it
 from enum import Enum
@@ -125,6 +125,8 @@ while running:
             case pygame.KEYUP:
                 if event.key == 122 and event.mod == 64:    # ???
                     lc.pop()
+                if event.key == 27:
+                    tp = []
                 for m in modes.values():
                     if event.unicode == m.char:
                         current_mode = m

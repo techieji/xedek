@@ -72,17 +72,23 @@ def draw_text(text, p, font):
 def draw_help_screen(p, font):
     text = """
 Keybindings:
-    h: show this [h]elp string
+    h: show/hide this [h]elp message
+    c: show/hide the [c]redits
+    l: show/hide the [l]icense
+
     w: [w]ire
     e: [e]mitter/lamp
     s: [s]ource
     g: [g]round
+
+    Esc: cancel current component
+    Space: start/stop simulation
     """.strip()
     draw_text(text, p, font)
 
 def draw_credits_screen(p, font):
     text = """
-XEDEC: eXtensible Electronic DEsign Kit
+XEDEK: eXtensible Electronic DEsign Kit
 
 Created by:
     Pradhyum Rajasekar <drpradhyum2016@outlook.com>
