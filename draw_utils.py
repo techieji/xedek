@@ -1,4 +1,4 @@
-import math
+import math    # TODO: add black background in draw_text
 import pygame
 
 screen = None
@@ -52,4 +52,64 @@ def draw_button(ip, ep, component=None):
     pos = midpoint(ip, ep)
     # s1 = 
 
+def draw_cursor(p, color='yellow'):
+    #pygame.draw.circle(screen, 'green', pos, 10)
+    pygame.draw.line(screen, color, (p[0] + 4, p[1]), (p[0] - 4, p[1]))
+    pygame.draw.line(screen, color, (p[0], p[1] + 4), (p[0], p[1] - 4))
 
+    pygame.draw.line(screen, color, (p[0] + 8, p[1]), (p[0] + 16, p[1]))
+    pygame.draw.line(screen, color, (p[0] - 8, p[1]), (p[0] - 16, p[1]))
+    pygame.draw.line(screen, color, (p[0], p[1] + 8), (p[0], p[1] + 16))
+    pygame.draw.line(screen, color, (p[0], p[1] - 8), (p[0], p[1] - 16))
+
+def draw_text(text, p, font):
+    c = p[1]
+    for l in text.split('\n'):
+        s = font.render(l, False, 'yellow')
+        screen.blit(s, (p[0], c))
+        c += s.get_height()
+
+def draw_help_screen(p, font):
+    text = """
+Keybindings:
+    h: show this [h]elp string
+    w: [w]ire
+    e: [e]mitter/lamp
+    s: [s]ource
+    g: [g]round
+    """.strip()
+    draw_text(text, p, font)
+
+def draw_credits_screen(p, font):
+    text = """
+XEDEC: eXtensible Electronic DEsign Kit
+
+Created by:
+    Pradhyum Rajasekar <drpradhyum2016@outlook.com>
+    Aditya Bansal <adityabansal0805@gmail.com>
+""".strip()
+    draw_text(text, p, font)
+
+def draw_license_screen(p, font):
+    text = """
+Copyright (c) 2023 Pradhyum Rajasekar and Aditya Bansal
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+""".strip()
+    draw_text(text, p, font)

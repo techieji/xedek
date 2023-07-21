@@ -217,10 +217,10 @@ class lamp(wire):      # FIXME: source and dest are same pin? Fix issue.
     def propagate_current(self, i1, i2):
         r = super().propagate_current(i1, i2)
         if r[0] and not self.on:
-            print(f'light {self.lamp_sid} on')
+            # print(f'light {self.lamp_sid} on')
             self.on = True
         elif not r[0] and self.on:
-            print(f'light {self.lamp_sid} off')
+            # print(f'light {self.lamp_sid} off')
             self.on = False
         return r
 
@@ -241,7 +241,7 @@ def _get_all_paths(pin, history=[]):
     new_history = history + [pin]
     if component.get_terminal_voltage(pin) == 0 or component in history[:-1]:
         return [new_history]
-    return cfi(_get_all_paths(p, new_history) for p in cfi(c.get_connected_pins(pin) for c in component.pcd[pin]) if p not in new_history[-2:])
+    return cfi(_get_all_paths(p, new_history) for p in cfi(c.get_connected_pins(pin) for c in component.pcd[pin]) if p not in new_history)
 
 def get_all_paths(pin):
     return DirectedGraph.from_list_of_lists(_get_all_paths(pin))
@@ -267,32 +267,20 @@ def propagate_current(paths: DirectedGraph):
 
 def main():
     global RUNNING
-    from pprint import pprint
-    #terminal(0, voltage=1)
-    #lamp(0, 1)
-    #lamp(0, 2)
-    #terminal(1, voltage=0)
+    terminal(0, voltage=5)
+    wire(0, 1)
+    lamp(1, 2)
+    wire(2, 3)
+    wire(1, 3)
+    wire(3, 4)
+    terminal(4, voltage=0)
 
-    terminal(0, voltage=0)
-    terminal(1, voltage=0)
-    terminal(2, voltage=5)
-    transistor(2, 0, 3)
-    transistor(3, 1, 4)
-    lamp(4, 5)
-    resistor(5, 6)
-    terminal(6, voltage=0)
-
-    #print(list(component.get_sources()))
-    #print(list(get_all_paths(0)))
-    #print(component.get_terminal_voltage(3))
-    #print(component.pcd)
-    #print(list(component.get_component(4).get_connections()))
-    #pprint(list(get_all_paths(0)))
-    #l = list(cfi(map(get_all_paths, component.get_sources())))
+    print('start')
     p = get_all_paths_from_positive()
+    print('running')
     RUNNING = True
     propagate_current(p)
-    #propagate_current(l)
+    print('end')
 
 if __name__ == '__main__':
     main()

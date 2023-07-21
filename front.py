@@ -1,4 +1,4 @@
-import pygame
+import pygame # TODO: add icon & escape button
 import math
 import itertools as it
 from enum import Enum
@@ -6,6 +6,10 @@ from collections import namedtuple
 from operator import attrgetter
 from dataclasses import dataclass
 from draw_utils import (
+    draw_cursor,
+    draw_help_screen,
+    draw_credits_screen,
+    draw_license_screen,
     draw_wire,
     draw_lamp,
     draw_positive,
@@ -42,6 +46,7 @@ class component:
 
 pygame.init()
 pygame.font.init()
+pygame.mouse.set_visible(False)
 font = pygame.font.SysFont('couriernew', 12)
 screen = pygame.display.set_mode((500, 500), pygame.RESIZABLE)
 draw_utils.screen = screen
@@ -50,9 +55,11 @@ running = True
 runner = None
 run_error = False
 current_mode = modes['wire']
+help_mode = False
+is_cursor_locked = False
 pos = (0, 0)
 
-pygame.display.set_caption('Electric circuit simulator')
+pygame.display.set_caption('XEDEC')
 
 lc = []         # List of components
 tp = []         # Temporary points
@@ -61,6 +68,7 @@ def get_sp():   # Significiant points
     return it.chain(it.chain.from_iterable(map(attrgetter('pins'), lc)), tp)
 
 def get_pos():
+    global is_cursor_locked
     _pos = pygame.mouse.get_pos()
     pos = _pos
     sp = list(get_sp())
@@ -77,6 +85,7 @@ def get_pos():
         else:
             continue
         pygame.draw.line(screen, 'forestgreen', pos, p)
+        is_cursor_locked = True
     pos = tuple(pos)
     return pos
 
@@ -125,6 +134,15 @@ while running:
                     if runner is None:
                         for c in lc:
                             c.bec = None
+                if event.unicode == 'h':
+                    help_mode = False if help_mode == 'help' else 'help'
+                elif event.unicode == 'c':
+                    help_mode = False if help_mode == 'credits' else 'credits'
+                elif event.unicode == 'l':
+                    help_mode = False if help_mode == 'license' else 'license'
+
+    ht = font.render("Press [h] for help, [c] for credits, [l] for license", False, 'yellow')
+    screen.blit(ht, (screen.get_width() - ht.get_width() - 10, screen.get_height() - ht.get_height() - 10))
 
     if runner is not None:
         try:
@@ -134,7 +152,9 @@ while running:
 
     for p in tp:
         pygame.draw.line(screen, 'yellow', p, pos)
-    pygame.draw.circle(screen, 'green', pos, 10)
+
+    draw_cursor(pos, color='green' if is_cursor_locked else 'yellow')
+    is_cursor_locked = False
 
     if len(tp) == current_mode.nw:
         lc.append(component(current_mode, tp))
@@ -144,15 +164,22 @@ while running:
     for c in lc:
         c.type.binding(*c.pins, component=c)
 
-    screen.blit(font.render(f"Mode: {current_mode.name}", False, 'yellow'), (0, 0))
+    if not help_mode:
+        screen.blit(font.render(f"Mode: {current_mode.name}", False, 'yellow'), (0, 0))
 
-    if runner is not None:
-        run_error = False
-        screen.blit(font.render("RUNNING", False, 'lightblue'), (0, 12))
-    elif run_error:
-        screen.blit(font.render("COULD NOT RUN", False, 'red'), (0, 12))
+        if runner is not None:
+            run_error = False
+            screen.blit(font.render("RUNNING", False, 'lightblue'), (0, 12))
+        elif run_error:
+            screen.blit(font.render("COULD NOT RUN", False, 'red'), (0, 12))
+    elif help_mode == 'help':
+        draw_help_screen((0, 0), font)
+    elif help_mode == 'license':
+        draw_license_screen((0, 0), font)
+    elif help_mode == 'credits':
+        draw_credits_screen((0, 0), font)
 
     pygame.display.flip()
-    clock.tick(60)
+    clock.tick(120)
 
 pygame.quit()
