@@ -25,13 +25,14 @@ from electric import (
     propagate_current_step,
     terminal,
     lamp,
-    wire
+    wire,
+    button
 )
 
 mode = namedtuple('mode', 'name char nw binding constructor')
 modes = {
     'wire': mode('wire', 'w', 2, draw_wire, wire),
-    'button': mode('button', 'b', 2, draw_wire, wire),
+    'button': mode('button', 'b', 2, draw_button, button), #FIXME
     'lamp': mode('lamp', 'e', 2, draw_lamp, lamp),
     'positive': mode('positive', 's', 1, draw_positive, lambda p: terminal(p, voltage=1)),
     'negative': mode('negative', 'g', 1, draw_negative, lambda p: terminal(p, voltage=0)),
@@ -43,6 +44,7 @@ class component:
     type: mode
     pins: list[tuple[int,int]]
     bec: backend_component = None
+    box: pygame.Rect = None
 
 pygame.init()
 pygame.font.init()
@@ -89,11 +91,16 @@ def get_pos():
     pos = tuple(pos)
     return pos
 
-def run():
-    global run_error
+def setup_run():
     backend_component.reset_class()
     for c in lc:
         c.bec = c.type.constructor(*map(hash, c.pins))      # bec = back end component
+
+def run(from_scratch=True):
+    global run_error
+    if from_scratch: setup_run()
+    for c in lamp.lamp_register.values():
+        c.on = False
     try:
         dg = get_all_paths_from_positive()
     except TypeError as e:
@@ -107,7 +114,7 @@ def run():
 while running:
     screen.fill('black')
     _pos = pygame.mouse.get_pos()
-    pos = get_pos()
+    pos = get_pos() if runner is None else _pos
     for event in pygame.event.get():
         match event.type:
             case pygame.QUIT:
@@ -119,8 +126,9 @@ while running:
                     tp.append(pos)
                 else:
                     for c in lc:
-                        if c.type.name == 'button':
-                            pass
+                        if c.type.name == 'button' and c.box.collidepoint(pos):
+                            c.bec.on = not c.bec.on
+                            runner = run(False)
 
             case pygame.KEYUP:
                 if event.key == 122 and event.mod == 64:    # ???

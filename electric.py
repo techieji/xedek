@@ -141,6 +141,7 @@ class component:
 
 class terminal(component):     # voltage
     '''Class for both positive terminals and ground.'''
+    resistance = 0
         
     def get_connected_pins(self, p):
         #if p == 'start':
@@ -152,6 +153,7 @@ class terminal(component):     # voltage
 
 class wire(component):
     '''Class for wires, which allow current to flow from one point to another.'''
+    resistance = 0
 
     def get_connected_pins(self, p):
         if p == self.p1: return [self.p2]
@@ -163,6 +165,7 @@ class wire(component):
 
 class diode(wire):
     '''Class for diodes, which act like one-directional wires.'''
+    resistance = 0
 
     def get_connected_pins(self, p):
         if p == self.p1: return [self.p2]
@@ -179,6 +182,7 @@ class transistor(component):
     
     1 is the collector, 2 is the base, 3 is the emitter.
     '''
+    resistance = 0
 
     def get_connected_pins(self, p):
         if RUNNING:
@@ -200,26 +204,33 @@ class transistor(component):
 class button(wire):      # TODO TODO get_connected_pins conditional on button press
     '''Class for buttons, which behave like wires when pressed but do not let current flow through
     otherwise.'''
-    pass
+    resistance = 0
+    def __init__(self, *ps, **kwargs):
+        super().__init__(*ps, **kwargs)
+        self.on = False
 
-class resistor(wire):          # resistance
-    '''Class for resistors, which behave like wires but create a resistance to weaken the current.'''
-    pass
+    def get_connected_pins(self, p):
+        if self.on:
+            return super().get_connected_pins(p)
+        return []
 
 class lamp(wire):      # FIXME: source and dest are same pin? Fix issue.
     lamp_sid = 1
+    resistance = 1
+    lamp_register = {}
     '''Class for lamps, which behave like resistors but also emit light when current flows through.'''
     def __init__(self, *ps, **kwargs):
         super().__init__(*ps, **kwargs)
         self.lamp_sid = lamp.lamp_sid
         lamp.lamp_sid += 1
         self.on = False
+        lamp.lamp_register[self.lamp_sid] = self
     def propagate_current(self, i1, i2):
         r = super().propagate_current(i1, i2)
-        if r[0] and not self.on:
+        if r[0]:
             # print(f'light {self.lamp_sid} on')
             self.on = True
-        elif not r[0] and self.on:
+        else:
             # print(f'light {self.lamp_sid} off')
             self.on = False
         return r
@@ -249,14 +260,46 @@ def get_all_paths(pin):
 def get_all_paths_from_positive():
     return reduce(DirectedGraph.union, map(get_all_paths, component.get_sources()))
 
-def detect_shorts(dg):     # TODO: finish
-    pass
+def crbap(p1, p2):      # Calculate resistance between adjacent pins
+    cs = [c for c in component.pcd[p1] if c in component.pcd[p2]]
+    if all(c.resistance for c in cs):
+        return 1
+    return 0
+
+def calculate_resistance(p: list[int]):
+    return any(crbap(p1, p2) for p1, p2 in zip(p, p[1:]))
+
+def greatest_prefix(path1, path2):       # FIXME: make faster
+    for p1 in path1[::-1]:
+        for p2 in path2[::-1]:
+            if p1 == p2:
+                return p1
+
+def detect_shorts(dg, s):     # TODO: use component.get_source to run on each source
+    d = defaultdict(lambda: [[]])     # TODO TODO TODO
+    layer = [s]                       # TODO TODO TODO
+    while layer:                      # TODO TODO TODO
+        new_layer = []
+        for p in layer:
+            for px in dg.get_conns(p):
+                if px not in cfi(d[p]):
+                    temp_paths = [l + [px] for l in d[p]]
+                    if px in d:
+                        for path1 in d[px]:
+                            for path2 in temp_paths:
+                                cp = greatest_prefix(path1, path2)
+                    d[px] = [l + [px] for l in d[p]]
+                    print("d[px]", d[px])
+            new_layer.extend(x for x in dg.get_conns(p) if x not in cfi(d[p]))
+        print("new layer", new_layer)
+        layer = new_layer
+    print(d)
 
 def propagate_current_at_pin(pin, paths):
     cl = component.pcd[pin]
     for c in cl:
         pl = c.get_connected_pins(pin)
-        # print(pin, pl, paths.get_conns(pin))
+        # print(pin, pl , paths.get_conns(pin))
         if set(pl).issubset(paths.get_conns(pin)) or type(c) is terminal:
             c._propagate_current()
 
@@ -270,16 +313,18 @@ def propagate_current(paths: DirectedGraph):
 
 def main():
     global RUNNING
-    terminal(0, voltage=5)
+    terminal(0, voltage=1)
+    wire(0, 2)
     wire(0, 1)
-    lamp(1, 2)
     wire(2, 3)
     wire(1, 3)
-    wire(3, 4)
-    terminal(4, voltage=0)
+    terminal(3, voltage=0)
 
     print('start')
     p = get_all_paths_from_positive()
+    print('checking shorts')
+    for s in component.get_sources():
+        detect_shorts(p, s)
     print('running')
     RUNNING = True
     propagate_current(p)

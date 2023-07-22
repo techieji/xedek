@@ -20,9 +20,11 @@ def draw_wire(ip, ep, color='yellow', component=None):
 
 def draw_lamp(ip, ep, component, r=10):
     if (component.bec is not None) and component.bec.on:
+        print('on', end='\r')
         fore = 'black'
         back = 'yellow'
     else:
+        print('off', end='\r')
         fore = 'yellow'
         back = 'black'
     draw_wire(ip, ep)
@@ -47,10 +49,21 @@ def draw_negative(p, component=None):
     pygame.draw.line(screen, 'yellow', (p[0] - 5, p[1] + 8), (p[0] + 4, p[1] + 8))
     pygame.draw.line(screen, 'yellow', (p[0] - 1, p[1] + 12), (p[0] + 1, p[1] + 12))
 
-def draw_button(ip, ep, component=None):
-    draw_wire(ip, ep)
+def draw_button(ip, ep, component):
     pos = midpoint(ip, ep)
-    # s1 = 
+    component.box = pygame.Rect(pos[0] - 15, pos[1] - 15, 30, 30)
+    s1 = (pos[0] - 10, pos[1])
+    s2 = (pos[0] + 10, pos[1])
+    pygame.draw.line(screen, 'yellow', ip, s1)
+    pygame.draw.circle(screen, 'yellow', s1, 2)
+    if component.bec is not None and component.bec.on:
+        pygame.draw.line(screen, 'yellow', (s1[0], s1[1]), (s2[0], s2[1]))
+        pygame.draw.line(screen, 'yellow', (pos[0], pos[1]), (pos[0], pos[1] - 10))
+    else:
+        pygame.draw.line(screen, 'yellow', (s1[0], s1[1] - 10), (s2[0], s2[1] - 10))
+        pygame.draw.line(screen, 'yellow', (pos[0], pos[1] - 10), (pos[0], pos[1] - 20))
+    pygame.draw.circle(screen, 'yellow', s2, 2)
+    pygame.draw.line(screen, 'yellow', s2, ep)
 
 def draw_cursor(p, color='yellow'):
     #pygame.draw.circle(screen, 'green', pos, 10)
@@ -71,6 +84,12 @@ def draw_text(text, p, font):
 
 def draw_help_screen(p, font):
     text = """
+Usage:
+    On startup, you are in EDIT mode. Upon
+    pressing SPACE, you are in RUN mode.
+    In RUN mode, mouse snapping is disabled
+    and buttons can be toggled.
+
 Keybindings:
     h: show/hide this [h]elp message
     c: show/hide the [c]redits
@@ -80,6 +99,7 @@ Keybindings:
     e: [e]mitter/lamp
     s: [s]ource
     g: [g]round
+    b: [b]utton
 
     Esc: cancel current component
     Space: start/stop simulation
